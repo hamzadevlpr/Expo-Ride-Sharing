@@ -1,5 +1,6 @@
 // app/_layout.tsx
 import { useColorScheme } from "@/hooks/useColorScheme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   DarkTheme,
   DefaultTheme,
@@ -9,36 +10,13 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { AuthProvider, useAuth } from "../lib/AuthProvider";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-function RootNavigator() {
-  const colorScheme = useColorScheme();
-  const { session, loading } = useAuth();
-
-  if (loading) return null; // Still checking session
-
-  return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* If no session → show onboarding/auth */}
-        {!session ? (
-          <>
-            <Stack.Screen name="(onboarding)" />
-            <Stack.Screen name="(auth)" />
-          </>
-        ) : (
-          // If session exists → go to app
-          <Stack.Screen name="(app)" />
-        )}
-      </Stack>
-    </ThemeProvider>
-  );
-}
-
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
   const [appReady, setAppReady] = useState(false);
+
   const [loaded, error] = useFonts({
     Gilroy: require("../assets/fonts/Gilroy-Regular.ttf"),
     GilroyMedium: require("../assets/fonts/Gilroy-Medium.ttf"),
@@ -46,21 +24,38 @@ export default function RootLayout() {
     GilroyBoldItalic: require("../assets/fonts/Gilroy-BoldItalic.ttf"),
   });
 
+  const [initialRoute, setInitialRoute] = useState<string | null>(null);
+
   useEffect(() => {
-    setAppReady(true);
+    const prepare = async () => {
+      try {
+        const onboarded = await AsyncStorage.getItem("isOnboarded");
+        if (onboarded === "true") {
+          setInitialRoute("(tabs)"); // user finished onboarding
+        } else {
+          setInitialRoute("(onboarding)");
+        }
+      } catch (e) {
+        console.warn("Failed to load onboarding state", e);
+        setInitialRoute("(onboarding)");
+      } finally {
+        SplashScreen.hideAsync().catch(() => {});
+      }
+    };
+    prepare();
   }, []);
 
-  useEffect(() => {
-    if ((loaded || error) && appReady) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [loaded, error, appReady]);
-
-  if (!loaded && !error) return null;
-
+  if (!initialRoute) return null;
   return (
-    <AuthProvider>
-      <RootNavigator />
-    </AuthProvider>
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <Stack
+        screenOptions={{ headerShown: false }}
+        initialRouteName={"(onboarding)"}
+      >
+        <Stack.Screen name="(onboarding)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </ThemeProvider>
   );
 }

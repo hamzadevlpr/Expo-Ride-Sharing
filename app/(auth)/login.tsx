@@ -1,12 +1,11 @@
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Alert,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import CountryPicker, { CountryCode } from "react-native-country-picker-modal";
 import DownIcon from "../../assets/icons/down.svg";
@@ -30,12 +29,9 @@ const LoginScreen = () => {
     }
   };
 
-  const onSubmit = () => {
-    Alert.alert(
-      "Form Submitted",
-      `Phone: +${callingCode} ${phoneNumber}\nCountry: ${countryCode}`
-    );
-  };
+  // const onSubmit = () => {
+  //   router.replace("/(tabs)/index")
+  // };
 
   useEffect(() => {
     if (phoneInputRef.current) {
@@ -81,7 +77,7 @@ const LoginScreen = () => {
           />
         </View>
         <View style={styles.submitButton}>
-          <TouchableOpacity style={styles.signupButton} onPress={onSubmit}>
+          <TouchableOpacity style={styles.signupButton} onPress={() => router.replace("/(tabs)")}>
             <Text style={styles.signupButtonText}>Sign in</Text>
           </TouchableOpacity>
           <Text style={styles.otpText}>

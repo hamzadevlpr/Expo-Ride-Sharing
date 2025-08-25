@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { yupResolver } from "@hookform/resolvers/yup";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Image,
@@ -11,15 +13,31 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
+import * as yup from "yup";
 import CameraIcon from "../../assets/icons/camera.svg";
 import UserIcon from "../../assets/icons/user.svg";
+const schema = yup.object().shape({
+  email: yup.string().email("Invalid email").required("Email is required"),
+  password: yup
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .required("Password is required"),
+  avatar: yup.string().required("Profile image is required"),
+});
 
 const SignupScreen = () => {
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(schema),
+  });
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [fullName, setFullName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,65 +50,82 @@ const SignupScreen = () => {
       quality: 0.7,
     });
     if (!result.canceled) {
-      setAvatar(result.assets[0].uri);
+      const uri = result.assets[0].uri;
+      setAvatar(uri);
+      setValue("avatar", uri, { shouldValidate: true });
     }
   };
 
-  const handleRegister = async () => {
-    // if (!email || !fullName || !avatar) {
-    //   Alert.alert("Error", "Please fill all fields and select an image.");
-    //   return;
-    // }
-    // setLoading(true);
-
-    // const { error } = await supabase.auth.signInWithOtp({
-    //   email,
-    //   options: {
-    //     shouldCreateUser: true,
-    //     data: {
-    //       full_name: fullName,
-    //       avatar_url: avatar,
-    //     },
-    //   },
+  const onSubmit = (data: any) => {
+    if (!avatar) {
+      Toast.show({ type: "error", text1: "Please select a profile picture" });
+      return;
+    }
+    Toast.show({ type: "success", text1: "Registration successful" });
+    // success → go to OTP
+    // router.push({
+    //   pathname: "/otp",
+    //   params: { ...data, avatar },
     // });
-
-    // setLoading(false);
-
-    // if (error) {
-    //   Alert.alert("Error", error.message);
-    //   return;
-    // }
-
-    router.push({
-      pathname: "/otp",
-      params: { email, fullName, avatar },
-    });
   };
   return (
     <>
       <View style={styles.container}>
         <Text style={styles.headerText}>Hello! Signup to get started</Text>
-        <TouchableOpacity style={styles.profileIcon} onPress={pickImage}>
-          {avatar ? (
-            <Image source={{ uri: avatar }} style={styles.profileImage} />
-          ) : (
-            <UserIcon width={49} height={49} />
-          )}
-          <View style={styles.cameraIcon}>
-            <CameraIcon width={20} height={20} />
-          </View>
-        </TouchableOpacity>
 
+        {/* Avatar */}
+        <Controller
+          control={control}
+          name="avatar"
+          render={() => (
+            <TouchableOpacity
+              style={[
+                styles.profileIcon,
+                {
+                  borderColor:
+                    !avatar && errors.avatar ? "red" : "#000",
+                },
+              ]}
+              onPress={pickImage}
+            >
+              {avatar ? (
+                <Image source={{ uri: avatar }} style={styles.profileImage} />
+              ) : (
+                <UserIcon width={49} height={49} />
+              )}
+              <View style={styles.cameraIcon}>
+                <CameraIcon width={20} height={20} />
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+
+        {/* Inputs */}
         <View style={styles.inputWrapper}>
+          {/* Full Name */}
           <View style={{ position: "relative", width: "100%" }}>
-            <TextInput
-              style={[styles.input, { paddingRight: 40 }]}
-              placeholder="Email"
-              keyboardType="email-address"
-              placeholderTextColor="#8C8C8C"
-              value={email}
-              onChangeText={setEmail}
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      paddingRight: 40,
+                      borderColor: errors.email ? "red" : "#000",
+                    },
+                  ]}
+                  placeholder="Email"
+                  placeholderTextColor="#8C8C8C"
+                  value={value}
+                  onChangeText={onChange}
+                />
+              )}
             />
+            {errors.email && (
+              <Text style={{ color: "red" }}>{errors.email.message}</Text>
+            )}
             <View
               style={{
                 position: "absolute",
@@ -98,17 +133,31 @@ const SignupScreen = () => {
                 top: "22%",
               }}
             >
-              <Ionicons name={"mail"} size={24} color="#8C8C8C" />
+              <Ionicons name={"person"} size={24} color="#8C8C8C" />
             </View>
           </View>
+
+          {/* Password */}
           <View style={{ position: "relative", width: "100%" }}>
-            <TextInput
-              style={[styles.input, { paddingRight: 40 }]}
-              placeholder="Password"
-              secureTextEntry={!showPassword}
-              placeholderTextColor="#8C8C8C"
-              value={password}
-              onChangeText={setPassword}
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      paddingRight: 40,
+                      borderColor: errors.password ? "red" : "#000",
+                    },
+                  ]}
+                  placeholder="Password"
+                  secureTextEntry={!showPassword}
+                  placeholderTextColor="#8C8C8C"
+                  value={value}
+                  onChangeText={onChange}
+                />
+              )}
             />
             <TouchableOpacity
               style={{
@@ -124,12 +173,17 @@ const SignupScreen = () => {
                 color="#8C8C8C"
               />
             </TouchableOpacity>
+            {errors.password && (
+              <Text style={{ color: "red" }}>{errors.password.message}</Text>
+            )}
           </View>
         </View>
+
+        {/* Submit */}
         <View style={styles.submitButton}>
           <TouchableOpacity
             style={styles.signupButton}
-            onPress={handleRegister}
+            onPress={handleSubmit(onSubmit)}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -137,6 +191,7 @@ const SignupScreen = () => {
               <Text style={styles.signupButtonText}>Sign up</Text>
             )}
           </TouchableOpacity>
+
           <Text style={styles.otpText}>
             Already have an account?{" "}
             <Text
